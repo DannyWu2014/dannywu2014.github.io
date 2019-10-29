@@ -21,4 +21,7 @@ script: # 在构建阶段需要运行的命令，一条一行
   - hexo generate # Hexo 常规命令，执行清理和生成
 
 after_success: # 在构建成功后要运行的命令，构建失败不会执行，其他同上
+  - git config --global user.name "danny"
+  - git config --global user.email "dannywu201407@gmail.com"
+  - sed -i'' - sed -i'' "s~git@github.com:dannywu201407/dannywu201407.github.io.git~https://${REPO_TOKEN}@github.com/dannywu201407/dannywu201407.github.io.git~" _config.yml
   - hexo deploy > /dev/null # 通过 hexo 的 deploy 命令部署博客
