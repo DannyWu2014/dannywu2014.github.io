@@ -15,6 +15,7 @@ install: # 在安装项目环境阶段需要运行的命令，一条一行
   - npm install -g hexo-cli
     # 安装 package.json 中的依赖
   - npm install
+  - npm install hexo-deployer-git --save
 
 script: # 在构建阶段需要运行的命令，一条一行
   - hexo clean
