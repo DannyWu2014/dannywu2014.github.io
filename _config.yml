@@ -8,8 +8,8 @@ subtitle:
 description:
 keywords:
 author: danny
-language: zh-Hans
-#language: zh-CN
+#language: zh-Hans
+language: zh-CN
 timezone:
 
 # URL
@@ -91,7 +91,7 @@ ignore:
 # Extensions
 ## Plugins: https://hexo.io/plugins/
 ## Themes: https://hexo.io/themes/
-theme: next
+theme: nextO
 
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
