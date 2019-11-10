@@ -1,5 +1,5 @@
 ---
-title: 设计模式课程大纲
+title: 设计模式大纲
 categories:
   - 设计模式
   - 打卡
