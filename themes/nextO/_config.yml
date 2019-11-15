@@ -743,7 +743,7 @@ growingio_analytics: # <project_id>
 
 # Google Analytics
 google_analytics:
-  tracking_id: 215716886 # <app_id>
+  tracking_id: G-XS7BFBSHLM # <app_id>
   localhost_ignored: true
   # By default, NexT will load an external gtag.js script on your site.
   # If you only need the pageview feature, set the following option to true to get a better performance.
@@ -774,8 +774,8 @@ leancloud_visitors:
 firestore:
   enable: true
   collection: articles # Required, a string collection name to access firestore database
-  apiKey: AIzaSyAXfwTDthB2CTalOW6uaXgqtrRW9he-AvA # Required
-  projectId: danny-blog-d3b11 # Required
+  apiKey: AIzaSyCaaUYDWPS5k-a93-hDNqGtrALtvNER8aQ # Required
+  projectId: a-danny-blog # Required
 
 # Show Views / Visitors of the website / page with busuanzi.
 # Get more information on http://ibruce.info/2015/04/04/busuanzi
