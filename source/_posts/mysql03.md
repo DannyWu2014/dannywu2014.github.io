@@ -4,7 +4,8 @@ categories:
   - MySQL
 tags:
   - MySQL
-date: 2019-11-28 16:23:17
+  - 事务
+date: 2019-11-27 16:23:17
 ---
 
 ## 学习目标
