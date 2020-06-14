@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+
+
+
+
+
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.4.2">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.4.2">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.4.2">
+  <link rel="mask-icon" href="/images/logo.svg?v=7.4.2" color="#222">
+
+<link rel="stylesheet" href="/css/main.css?v=7.4.2">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.7.0">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.4.2',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: '复制',
+      copy_success: '复制成功',
+      copy_failure: '复制失败'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="哈希算法在开发中有很常见的应用, 但是也仍然存在一些问题. 在 nginx 中作为一种路由策略, 如果添加或删除路由节点, 会导致路由发生大规模的变化;  在分布式缓存系统中, 如果添加或删除节点, 会导致缓存大规模的失效. 对于这些敏感的使用场景, 哈希算法并不能发挥很好的作用, 因此也就有了改良后的一致性哈希算法.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="一致性 Hash 算法">
+<meta property="og:url" content="https://dannywu2014.github.io/2019/11/13/consistent-hash/index.html">
+<meta property="og:site_name" content="Danny Blog">
+<meta property="og:description" content="哈希算法在开发中有很常见的应用, 但是也仍然存在一些问题. 在 nginx 中作为一种路由策略, 如果添加或删除路由节点, 会导致路由发生大规模的变化;  在分布式缓存系统中, 如果添加或删除节点, 会导致缓存大规模的失效. 对于这些敏感的使用场景, 哈希算法并不能发挥很好的作用, 因此也就有了改良后的一致性哈希算法.">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2019-11-13T22:29:15.000Z">
+<meta property="article:modified_time" content="2020-06-14T06:09:37.948Z">
+<meta property="article:author" content="danny">
+<meta property="article:tag" content="分布式">
+<meta name="twitter:card" content="summary">
+  <link rel="canonical" href="https://dannywu2014.github.io/2019/11/13/consistent-hash/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>一致性 Hash 算法 | Danny Blog</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-152640270-1"></script>
+    <script>
+      var host = window.location.hostname;
+      if (host !== "localhost" || !true) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-152640270-1');
+      }
+    </script>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Danny Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+      
+      
+        
+        
+        <li class="menu-item menu-item-home">
+      
+    
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+      
+    
+      
+      
+        
+        
+        <li class="menu-item menu-item-about">
+      
+    
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+      
+    
+      
+      
+        
+        
+        <li class="menu-item menu-item-tags">
+      
+    
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+      
+    
+      
+      
+        
+        
+        <li class="menu-item menu-item-categories">
+      
+    
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+      
+    
+      
+      
+        
+        
+        <li class="menu-item menu-item-archives">
+      
+    
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+      
+    
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+            
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://dannywu2014.github.io/2019/11/13/consistent-hash/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="danny">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/uploads/avatar.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Danny Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            一致性 Hash 算法
+            
+
+          
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              
+                
+              
+
+              <time title="创建时间：2019-11-13 22:29:15" itemprop="dateCreated datePublished" datetime="2019-11-13T22:29:15+00:00">2019-11-13</time>
+            </span>
+          
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>哈希算法在开发中有很常见的应用, 但是也仍然存在一些问题.</p>
+<p>在 nginx 中作为一种路由策略, 如果添加或删除路由节点, 会导致路由发生大规模的变化; </p>
+<p>在分布式缓存系统中, 如果添加或删除节点, 会导致缓存大规模的失效.</p>
+<p>对于这些敏感的使用场景, 哈希算法并不能发挥很好的作用, 因此也就有了改良后的一致性哈希算法.</p>
+<a id="more"></a>
+
+<h2 id="一致性哈希"><a href="#一致性哈希" class="headerlink" title="一致性哈希"></a>一致性哈希</h2><h3 id="Hash-环"><a href="#Hash-环" class="headerlink" title="Hash 环"></a>Hash 环</h3><p>一致性哈希将哈希值看作一个环(哈希环), 采用分片(范围)来代替单个的值进行路由, 因此才有了可能解决大规模的路由失效的问题.</p>
+<p>通常哈希算法会生成一个32位的key, 哈希环的范围也就是: 0 - 2^32-1.</p>
+<h3 id="分片路由"><a href="#分片路由" class="headerlink" title="分片路由"></a>分片路由</h3><p>将每个节点进行哈希取值, 将值映射到哈希环上对应的点.</p>
+<p>对于每个需要路由的对象, 取其哈希值并映射到哈希环上对应的点, 然后按顺时针方向移动, 第一次遇到的节点就是该对象的目标路由节点了.</p>
+<h3 id="添加或删除节点测试"><a href="#添加或删除节点测试" class="headerlink" title="添加或删除节点测试"></a>添加或删除节点测试</h3><p>当在哈希环中添加一个节点时, 只有新添加节点的下一个节点的部分路由分配到新添加的节点上, 其他节点无影响;</p>
+<p>当在哈希环中删除一个节点时, 被删除节点的按顺时针方向的下一个节点将要额外承担被删除节点的路由, 其他节点无影响.</p>
+<h2 id="路由平衡性"><a href="#路由平衡性" class="headerlink" title="路由平衡性"></a>路由平衡性</h2><p>如果以节点的单个哈希值进行分片路由, 很可能会出现路由不均衡的现象, 某些节点路由负载太高, 某些节点路由负载又太低.</p>
+<p>为了解决上述问题, 因此引入了虚拟节点的概念, 从而提高路由的平衡希.</p>
+<p>也就是将一个节点根据哈希算法生成多个哈希值, 映射到哈希环上; 这样一个节点也就对应哈希环上的多个分片区间.</p>
+<p>通常根据节点的复制个数, 对节点的 IP 地址加数字后缀的方式来生成其虚拟节点的哈希值.</p>
+<p><a href="https://blog.csdn.net/a837199685/article/details/42806343" target="_blank" rel="noopener">reference</a></p>
+
+    </div>
+
+    
+    
+    
+        
+      
+
+      <footer class="post-footer">
+          
+            
+          
+          <div class="post-tags">
+            
+              <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/" rel="tag"><i class="fa fa-tag"></i> 分布式</a>
+            
+          </div>
+        
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+              
+                <a href="/2019/11/12/dp05/" rel="next" title="面向对象四大特性">
+                  <i class="fa fa-chevron-left"></i> 面向对象四大特性
+                </a>
+              
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+              
+                <a href="/2019/11/15/dp06/" rel="prev" title="面向对象编程与面向过程编程比较(上)">
+                  面向对象编程与面向过程编程比较(上) <i class="fa fa-chevron-right"></i>
+                </a>
+              
+            </div>
+          </div>
+        
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+    
+    <div class="comments" id="gitalk-container"></div>
+  
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+        
+        
+        
+        
+      
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一致性哈希"><span class="nav-number">1.</span> <span class="nav-text">一致性哈希</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Hash-环"><span class="nav-number">1.1.</span> <span class="nav-text">Hash 环</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#分片路由"><span class="nav-number">1.2.</span> <span class="nav-text">分片路由</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#添加或删除节点测试"><span class="nav-number">1.3.</span> <span class="nav-text">添加或删除节点测试</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#路由平衡性"><span class="nav-number">2.</span> <span class="nav-text">路由平衡性</span></a></li></ol></div>
+        
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image"
+      src="/uploads/avatar.jpeg"
+      alt="danny">
+  <p class="site-author-name" itemprop="name">danny</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">20</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-categories">
+        
+          
+            <a href="/categories/">
+          
+        
+        <span class="site-state-item-count">8</span>
+        <span class="site-state-item-name">分类</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-tags">
+        
+          
+            <a href="/tags/">
+          
+        
+        <span class="site-state-item-count">10</span>
+        <span class="site-state-item-name">标签</span>
+        </a>
+      </div>
+    
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+      
+      
+        
+      
+      
+        
+      
+        <a href="https://github.com/dannywu2014/dannywu2014.github.io" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;dannywu2014&#x2F;dannywu2014.github.io" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+    
+      <span class="links-of-author-item">
+      
+      
+        
+      
+      
+        
+      
+        <a href="mailto:dannywu201407@gmail.com" title="E-Mail &amp;rarr; mailto:dannywu201407@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+    
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">danny</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js?v=3.1.0"></script>
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+<script src="/js/utils.js?v=7.4.2.js"></script>
+
+<script src="/js/motion.js?v=7.4.2.js"></script>
+
+
+<script src="/js/schemes/pisces.js?v=7.4.2.js"></script>
+
+
+<script src="/js/next-boot.js?v=7.4.2.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID: '00e78d8600f20d9767d3',
+      clientSecret: 'e72ef2c7618f642df7a0eac4903ea07abd10b99e',
+      repo: 'blog-comments',
+      owner: 'dannywu2014',
+      admin: ['dannywu2014'],
+      id: '3926e59902e7b6887854ed3f5c208b66',
+        language: 'zh-CN',
+      
+      distractionFreeMode: 'true'
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+</script>
+
+</body>
+</html>

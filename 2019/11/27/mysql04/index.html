@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+
+
+
+
+
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.4.2">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.4.2">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.4.2">
+  <link rel="mask-icon" href="/images/logo.svg?v=7.4.2" color="#222">
+
+<link rel="stylesheet" href="/css/main.css?v=7.4.2">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.7.0">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.4.2',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    translation: {
+      copy_button: '复制',
+      copy_success: '复制成功',
+      copy_failure: '复制失败'
+    },
+    sidebarPadding: 40
+  };
+</script>
+
+  <meta name="description" content="索引是用来提高数据库查询效率的.其本质是数据结构, 通过选择不同的数据结构和算法, 来提高数据库的查询效率. 学习目标MySQL04, MySQL05  常见索引模型及其适用场景 InnoDB 的索引模型 索引维护以及主键索引的选择依据 常用索引优化方案: 覆盖索引, 最左前缀原则, 索引下推">
+<meta property="og:type" content="article">
+<meta property="og:title" content="索引">
+<meta property="og:url" content="https://dannywu2014.github.io/2019/11/27/mysql04/index.html">
+<meta property="og:site_name" content="Danny Blog">
+<meta property="og:description" content="索引是用来提高数据库查询效率的.其本质是数据结构, 通过选择不同的数据结构和算法, 来提高数据库的查询效率. 学习目标MySQL04, MySQL05  常见索引模型及其适用场景 InnoDB 的索引模型 索引维护以及主键索引的选择依据 常用索引优化方案: 覆盖索引, 最左前缀原则, 索引下推">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2019-11-27T17:26:17.000Z">
+<meta property="article:modified_time" content="2020-06-14T06:09:37.952Z">
+<meta property="article:author" content="danny">
+<meta property="article:tag" content="MySQL">
+<meta property="article:tag" content="索引">
+<meta name="twitter:card" content="summary">
+  <link rel="canonical" href="https://dannywu2014.github.io/2019/11/27/mysql04/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true,
+    isPage: false,
+    isArchive: false
+  };
+</script>
+
+  <title>索引 | Danny Blog</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-152640270-1"></script>
+    <script>
+      var host = window.location.hostname;
+      if (host !== "localhost" || !true) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-152640270-1');
+      }
+    </script>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Danny Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+      
+      
+        
+        
+        <li class="menu-item menu-item-home">
+      
+    
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+      
+    
+      
+      
+        
+        
+        <li class="menu-item menu-item-about">
+      
+    
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+      
+    
+      
+      
+        
+        
+        <li class="menu-item menu-item-tags">
+      
+    
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+      
+    
+      
+      
+        
+        
+        <li class="menu-item menu-item-categories">
+      
+    
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+      
+    
+      
+      
+        
+        
+        <li class="menu-item menu-item-archives">
+      
+    
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+      
+    
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+            
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://dannywu2014.github.io/2019/11/27/mysql04/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="danny">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/uploads/avatar.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Danny Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            索引
+            
+
+          
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              
+                
+              
+
+              <time title="创建时间：2019-11-27 17:26:17" itemprop="dateCreated datePublished" datetime="2019-11-27T17:26:17+00:00">2019-11-27</time>
+            </span>
+          
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/MySQL/" itemprop="url" rel="index">
+                    <span itemprop="name">MySQL</span>
+                  </a>
+                </span>
+
+                
+                
+                  ，
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/MySQL/%E6%89%93%E5%8D%A1/" itemprop="url" rel="index">
+                    <span itemprop="name">打卡</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>索引是用来提高数据库查询效率的.<br>其本质是数据结构, 通过选择不同的数据结构和算法, 来提高数据库的查询效率.</p>
+<h2 id="学习目标"><a href="#学习目标" class="headerlink" title="学习目标"></a>学习目标</h2><p>MySQL04, MySQL05</p>
+<ul>
+<li>常见索引模型及其适用场景</li>
+<li>InnoDB 的索引模型</li>
+<li>索引维护以及主键索引的选择依据</li>
+<li>常用索引优化方案: 覆盖索引, 最左前缀原则, 索引下推</li>
+</ul>
+<a id="more"></a>
+
+<h2 id="常见索引模型"><a href="#常见索引模型" class="headerlink" title="常见索引模型"></a>常见索引模型</h2><p>常见的索引数据结构有: 哈希表, 数组, 搜索树, 跳表以及 LSM 数. 这里只介绍了前三种.</p>
+<h3 id="哈希表"><a href="#哈希表" class="headerlink" title="哈希表"></a>哈希表</h3><ul>
+<li>查询速度快, 添加删除也快</li>
+<li>在不出现哈希碰撞的情况下, 时间复杂度均为 O(1); 出现哈希碰撞后, 一般适用链表保存数据, 链表查询时间复杂度为 O(n); </li>
+<li>虽然查询和增删数据都比较快, 但是 key 值是没有排序的, 区间范围查询需要遍历整个数据库, 时间复杂度较高, 为 O(n);</li>
+<li>适合作为 K-V 型数据库, 且没有太多重复哈希值的情况;</li>
+</ul>
+<h3 id="有序数组"><a href="#有序数组" class="headerlink" title="有序数组"></a>有序数组</h3><ul>
+<li>查询速度快, 数组具备随机访问能力;</li>
+<li>当数组是有序的时候, 查询时间复杂度为 O(log(n)), 且只支持区间查询;</li>
+<li>但是添加数据时, 需要进行数据搬移, 时间复杂度较高, 为 O(n);</li>
+<li>数组适合用来做静态数据分析;</li>
+</ul>
+<h3 id="搜索树"><a href="#搜索树" class="headerlink" title="搜索树"></a>搜索树</h3><ul>
+<li>数据可以是有序的, 支持区间查询;</li>
+<li>查询时间复杂度为 O(log(n)), 增删记录的时间复杂也为 O(log(n));</li>
+<li>为保证查询性能, 尽可能少地随机访问磁盘, 降低树的高度, 一般采用 N 叉数, 而不是二叉树;</li>
+<li>适用常见数据, MySQL 的 InnoDB 采用 B+ 树;</li>
+</ul>
+<h2 id="InnoDB-的索引模型"><a href="#InnoDB-的索引模型" class="headerlink" title="InnoDB 的索引模型"></a>InnoDB 的索引模型</h2><p>MySQL 的 InnoDB 采用 B+ 树作为索引.</p>
+<p>表数据都是根据索引顺序进行组织, 索引分为主键索引(聚簇索引)和普通索引(二级索引);</p>
+<ul>
+<li>聚簇索引上根据主键值存储该行记录的所有数据;</li>
+<li>二级索引上根据索引值存储该行的主键值;</li>
+</ul>
+<h3 id="回表"><a href="#回表" class="headerlink" title="回表"></a>回表</h3><p>当根据普通索引进行条件查询时, 如果该查询返回的某个字段在该普通索引上并不存在, 数据库这需要根据查询的主键重新去主键索引上查询对应数据.</p>
+<p>这个过程成为回表. </p>
+<p>由于该过程对两颗索引树进行查询, 会降低查询索引效率, 所以<strong>尽量根据主键进行数据查询, 以减少回表</strong>.</p>
+<h2 id="索引维护"><a href="#索引维护" class="headerlink" title="索引维护"></a>索引维护</h2><p>索引可以提高查询效率, 但同时在添加数据的时候需要索引进行维护.</p>
+<h3 id="最好选用递增的主键索引"><a href="#最好选用递增的主键索引" class="headerlink" title="最好选用递增的主键索引"></a>最好选用递增的主键索引</h3><p>当添加数据的时候, 非递增主键索引会导致索引树的重排序, 甚至是页分裂, 从而降低数据库性能;</p>
+<h3 id="最好选用长度较短的主键"><a href="#最好选用长度较短的主键" class="headerlink" title="最好选用长度较短的主键"></a>最好选用长度较短的主键</h3><p>从存储的角度, 如果主键过长, 在建立二级索引的时候, 会使得索引存储空间较大.</p>
+<h2 id="索引优化方案"><a href="#索引优化方案" class="headerlink" title="索引优化方案"></a>索引优化方案</h2><h3 id="覆盖索引"><a href="#覆盖索引" class="headerlink" title="覆盖索引"></a>覆盖索引</h3><p>当使用普通索引进行查询时, 可以用来避免回表来提高查询效率;</p>
+<h3 id="索引最左前缀原则"><a href="#索引最左前缀原则" class="headerlink" title="索引最左前缀原则"></a>索引最左前缀原则</h3><p>当建立了联合索引 (a, b) 时, 可以相当于建立了两颗索引树;</p>
+<ul>
+<li>(a, b) 联合索引;</li>
+<li>(a) 单索引, 该索引依据索引最左前缀原则, 可以用来提高查询效率;</li>
+</ul>
+<p><strong>最左前缀可以是索引最左边的 n 个字段, 也可以是字符串索引的左边 n 个字符.</strong></p>
+<h3 id="索引下推"><a href="#索引下推" class="headerlink" title="索引下推"></a>索引下推</h3><p><strong>索引下推优化是在 MySQL 5.6 中引入的, 当普通索引中包含约束查询条件的字段时, 会使用该字段进行过滤不满足条件的记录, 减少回表次数.</strong></p>
+<p>当建立了联合索引 (a, b) 时, 一条查询语句的查询条件包括但不限于 a, b 两个字段时, a 索引将会被使用来优化查询效率, 同时数据库也会根据 b 的判断条件在联合索引树去过滤不符合条件的数据, 最后对满足条件的记录进行回表条件查询.</p>
+
+    </div>
+
+    
+    
+    
+        
+      
+
+      <footer class="post-footer">
+          
+            
+          
+          <div class="post-tags">
+            
+              <a href="/tags/MySQL/" rel="tag"><i class="fa fa-tag"></i> MySQL</a>
+            
+              <a href="/tags/%E7%B4%A2%E5%BC%95/" rel="tag"><i class="fa fa-tag"></i> 索引</a>
+            
+          </div>
+        
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-next post-nav-item">
+              
+                <a href="/2019/11/27/mysql03/" rel="next" title="事务隔离">
+                  <i class="fa fa-chevron-left"></i> 事务隔离
+                </a>
+              
+            </div>
+
+            <span class="post-nav-divider"></span>
+
+            <div class="post-nav-prev post-nav-item">
+              
+                <a href="/2020/06/14/chat01/" rel="prev" title="Just 随便聊聊">
+                  Just 随便聊聊 <i class="fa fa-chevron-right"></i>
+                </a>
+              
+            </div>
+          </div>
+        
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+    
+    <div class="comments" id="gitalk-container"></div>
+  
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+        
+        
+        
+        
+      
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#学习目标"><span class="nav-number">1.</span> <span class="nav-text">学习目标</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#常见索引模型"><span class="nav-number">2.</span> <span class="nav-text">常见索引模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#哈希表"><span class="nav-number">2.1.</span> <span class="nav-text">哈希表</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#有序数组"><span class="nav-number">2.2.</span> <span class="nav-text">有序数组</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#搜索树"><span class="nav-number">2.3.</span> <span class="nav-text">搜索树</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#InnoDB-的索引模型"><span class="nav-number">3.</span> <span class="nav-text">InnoDB 的索引模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#回表"><span class="nav-number">3.1.</span> <span class="nav-text">回表</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#索引维护"><span class="nav-number">4.</span> <span class="nav-text">索引维护</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#最好选用递增的主键索引"><span class="nav-number">4.1.</span> <span class="nav-text">最好选用递增的主键索引</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#最好选用长度较短的主键"><span class="nav-number">4.2.</span> <span class="nav-text">最好选用长度较短的主键</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#索引优化方案"><span class="nav-number">5.</span> <span class="nav-text">索引优化方案</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#覆盖索引"><span class="nav-number">5.1.</span> <span class="nav-text">覆盖索引</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#索引最左前缀原则"><span class="nav-number">5.2.</span> <span class="nav-text">索引最左前缀原则</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#索引下推"><span class="nav-number">5.3.</span> <span class="nav-text">索引下推</span></a></li></ol></li></ol></div>
+        
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image"
+      src="/uploads/avatar.jpeg"
+      alt="danny">
+  <p class="site-author-name" itemprop="name">danny</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">20</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-categories">
+        
+          
+            <a href="/categories/">
+          
+        
+        <span class="site-state-item-count">8</span>
+        <span class="site-state-item-name">分类</span>
+        </a>
+      </div>
+    
+      
+      
+      <div class="site-state-item site-state-tags">
+        
+          
+            <a href="/tags/">
+          
+        
+        <span class="site-state-item-count">10</span>
+        <span class="site-state-item-name">标签</span>
+        </a>
+      </div>
+    
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+      
+      
+        
+      
+      
+        
+      
+        <a href="https://github.com/dannywu2014/dannywu2014.github.io" title="GitHub &amp;rarr; https:&#x2F;&#x2F;github.com&#x2F;dannywu2014&#x2F;dannywu2014.github.io" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+    
+      <span class="links-of-author-item">
+      
+      
+        
+      
+      
+        
+      
+        <a href="mailto:dannywu201407@gmail.com" title="E-Mail &amp;rarr; mailto:dannywu201407@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+    
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">danny</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js?v=3.1.0"></script>
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+<script src="/js/utils.js?v=7.4.2.js"></script>
+
+<script src="/js/motion.js?v=7.4.2.js"></script>
+
+
+<script src="/js/schemes/pisces.js?v=7.4.2.js"></script>
+
+
+<script src="/js/next-boot.js?v=7.4.2.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID: '00e78d8600f20d9767d3',
+      clientSecret: 'e72ef2c7618f642df7a0eac4903ea07abd10b99e',
+      repo: 'blog-comments',
+      owner: 'dannywu2014',
+      admin: ['dannywu2014'],
+      id: '67bec6c696cd7795e7995705a3ea77a6',
+        language: 'zh-CN',
+      
+      distractionFreeMode: 'true'
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+</script>
+
+</body>
+</html>
