@@ -743,7 +743,7 @@ growingio_analytics: # <project_id>
 
 # Google Analytics
 google_analytics:
-  tracking_id: UA-152640270-1 # <app_id>
+  tracking_id: #UA-152640270-1 # <app_id>
   localhost_ignored: true
   # By default, NexT will load an external gtag.js script on your site.
   # If you only need the pageview feature, set the following option to true to get a better performance.
@@ -772,7 +772,7 @@ leancloud_visitors:
 # Visit https://console.firebase.google.com/u/0/ to get apiKey and projectId.
 # Visit https://firebase.google.com/docs/firestore/ to get more information about firestore.
 firestore:
-  enable: true
+  enable: false #true
   collection: articles # Required, a string collection name to access firestore database
   apiKey: AIzaSyCaaUYDWPS5k-a93-hDNqGtrALtvNER8aQ # Required
   projectId: a-danny-blog # Required
